@@ -8,7 +8,7 @@
 Parse.Cloud.define("testQuery", function(request, response){
     var routes = Parse.Object.extend("stop_times");
     var query = new Parse.Query(routes);
-    query.equalTo("trip_id", "METSGO102_156428");
+    query.equalTo("trip_id", request.params.TRIP_ID);
     query.find({
         success: function(results) {
             response.success(results);
@@ -883,34 +883,108 @@ Parse.Cloud.define("testKmeans", function(request, response) {
         K: 4
     });
 
-    km.cluster(data);
-    while (km.step()) {
-        km.findClosestCentroids();
-        km.moveCentroids();
-
-        console.log(km.centroids);
-
-        if(km.hasConverged()) break;
-    }
-
-    console.log('Finished in:', km.currentIteration, ' iterations');
-    console.log(km.centroids, km.clusters);
+    //km.cluster(data);
+    //while (km.step()) {
+    //    km.findClosestCentroids();
+    //    km.moveCentroids();
+    //
+    //    console.log(km.centroids);
+    //
+    //    if(km.hasConverged()) break;
+    //}
+    //
+    //console.log('Finished in:', km.currentIteration, ' iterations');
+    //console.log(km.centroids, km.clusters);
 
     response.success(km.centroids);
 });
+
+Parse.Cloud.define("getTripDetail", function(request, response){
+    var routes = Parse.Object.extend("stop_times");
+    var query = new Parse.Query(routes);
+    query.equalTo("trip_id", request.params.TRIP_ID);
+    query.find({
+        success: function(results) {
+            stop_IDs = [];
+            arrivel_times = [];
+            departure_times = [];
+            for(var i = 0;i < results.length;i++){
+                var object = results[i];
+                stop_IDs.push(object.get("stop_id"));
+                arrivel_times.push(object.get("arrival_time"));
+                departure_times.push(object.get("departure_time"));
+            }
+
+            response.success([stop_IDs, arrivel_times, departure_times]);
+        },
+        error: function(error) {
+            response.error('some error happens');
+        }
+    });
+});
+
+Parse.Cloud.define("getUserDetail", function(request, response){
+    var users = Parse.Object.extend("userDataNew");
+    var query = new Parse.Query(users);
+    query.limit(1000);
+    query.equalTo("stopID", request.params.STOP_ID);
+    query.find({
+        success: function(results) {
+            arrivel_times = [];
+            departure_times = [];
+            for(var i = 0;i < results.length;i++){
+                var object = results[i];
+                arrivel_times.push(object.get("arrival_time"));
+                departure_times.push(object.get("departure_time"));
+            }
+
+            response.success([arrivel_times, departure_times]);
+        },
+        error: function(error) {
+            response.error('some error happens');
+        }
+    });
+});
+
+Parse.Cloud.define("kmeans", function(request, response){
+    Parse.Cloud.run("getTripDetail", { TRIP_ID: "METSGO102_156494" }, {
+        success: function(results) {
+            var stop_IDs = results[0];
+            var standard_arrival_times = results[1];
+            var standard_departure_times = results[2];
+            Parse.Cloud.run("getUserDetail", { STOP_ID: "20" }, {
+                success: function(results) {
+                    var departure_times = results[1];
+                    var index = stop_IDs.indexOf("20");
+                    var standard_departure_time = standard_departure_times[index];
+
+                    response.success(standard_departure_time);
+                },
+                error: function(error) {
+                    response.error('get user detail error');
+                }
+            });
+            //response.sucåcess(arrival_times.length);
+        },
+        error: function(error) {
+            response.error('get trip detail error');
+        }
+    });
+});
+
 
 //Schedule Jobs
 
 //Parse.Cloud.job("generateDataJob", function() {
 //  Parse.Cloud.useMasterKey();
 //  Parse.Cloud.run("generateUserData1", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData2", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData3", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData4", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData5", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData6", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData7", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData8", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData9", null, {success:"Schedule successfully!", error: "Schedule fail!"});
-//  Parse.Cloud.run("generateUserData10", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData2", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData3", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData4", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData5", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData6", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData7", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData8", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData9", null, {success:"Schedule successfully!", error: "Schedule fail!"});
+//  //Parse.Cloud.run("generateUserData10", null, {success:"Schedule successfully!", error: "Schedule fail!"});
 //});
