@@ -934,8 +934,10 @@ Parse.Cloud.define("getUserDetail", function(request, response){
             departure_times = [];
             for(var i = 0;i < results.length;i++){
                 var object = results[i];
-                arrivel_times.push(object.get("arrival_time"));
-                departure_times.push(object.get("departure_time"));
+                var at = object.get("timeArrival");
+                arrivel_times.push(at.getHours()*60+at.getMinutes());
+                var dt = object.get("timeDeparture")
+                departure_times.push(dt.getHours()*60+dt.getMinutes());
             }
 
             response.success([arrivel_times, departure_times]);
@@ -946,6 +948,11 @@ Parse.Cloud.define("getUserDetail", function(request, response){
     });
 });
 
+function date_to_min(time){
+    var tmp = time.split(":");
+    return parseInt(tmp[0])*60+parseInt(tmp[1]);
+}
+
 Parse.Cloud.define("kmeans", function(request, response){
     Parse.Cloud.run("getTripDetail", { TRIP_ID: "METSGO102_156494" }, {
         success: function(results) {
@@ -955,10 +962,24 @@ Parse.Cloud.define("kmeans", function(request, response){
             Parse.Cloud.run("getUserDetail", { STOP_ID: "20" }, {
                 success: function(results) {
                     var departure_times = results[1];
+
                     var index = stop_IDs.indexOf("20");
                     var standard_departure_time = standard_departure_times[index];
+                    var s_d_t = date_to_min(standard_departure_time);
 
-                    response.success(standard_departure_time);
+                    var kMeans = require("cloud/kMeans.js");
+                    //var data=[[1],[1],[20],[1],[1],[1],[1],[1],[1],[20],[20]];
+                    var d_ts = []
+                    departure_times.forEach(function(entry) {
+                        d_ts.push([entry]);
+                    });
+                    var km = new kMeans({
+                        K: 1
+                        //initialize: s_d_t
+                    });
+                    //console.log(km.centroids, km.clusters);
+
+                    response.success(s_d_t);
                 },
                 error: function(error) {
                     response.error('get user detail error');
