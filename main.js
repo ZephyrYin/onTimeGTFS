@@ -27,7 +27,7 @@ Parse.Cloud.define("generateUserData1", function(request, response){
  	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
  	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
  	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156494" }, {
+    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156426" }, {
         success: function(results) {
             var cnt=0;
             for(var u=1;u<=userNumber;u++){
@@ -948,17 +948,21 @@ Parse.Cloud.define("getUserDetail", function(request, response){
     });
 });
 
-function date_to_min(time){
+function str_to_min(time){             // string to min
     var tmp = time.split(":");
     return parseInt(tmp[0])*60+parseInt(tmp[1]);
 }
 
-function initial_centroids(centroids){
-    return centroids;
+function min_to_date(time){
+    var date = new Date();
+    var t = Math.round(time);
+    date.setHours(t/60);
+    date.setMinutes(t%60);
+    return date;
 }
 
 Parse.Cloud.define("kmeans", function(request, response){
-    Parse.Cloud.run("getTripDetail", { TRIP_ID: "METSGO102_156428" }, {
+    Parse.Cloud.run("getTripDetail", { TRIP_ID: "METSGO102_156426" }, {
         success: function(results) {
             var stop_IDs = results[0];
             var standard_arrival_times = results[1];
@@ -969,7 +973,7 @@ Parse.Cloud.define("kmeans", function(request, response){
 
                     var index = stop_IDs.indexOf("20");
                     var standard_departure_time = standard_departure_times[index];
-                    var s_d_t = date_to_min(standard_departure_time);
+                    var s_d_t = str_to_min(standard_departure_time);
 
                     var kMeans = require("cloud/kMeans.js");
 
@@ -979,10 +983,10 @@ Parse.Cloud.define("kmeans", function(request, response){
                     });
 
                     var km = new kMeans({
-                        K: 1,                                           // number of centroid
-                        initialize: function(X, K, m, n){               //initialize: initial_centroids
-                            return [[s_d_t]];
-                        }
+                        K: 2,                                           // number of centroid
+                        //initialize: function(X, K, m, n){               //initialize: initial_centroids
+                        //    return [[s_d_t]];
+                        //}
                     });
 
                     km.cluster(d_ts);                                   // run k-means
@@ -993,9 +997,13 @@ Parse.Cloud.define("kmeans", function(request, response){
                         if(km.hasConverged()) break;
                     }
 
-                    console.log(km.centroids, km.clusters);
+                    departure_time_centroid = [];
+                    km.centroids.forEach(function(entry){
+                        departure_time_centroid.push(min_to_date(entry[0]));
+                    });
+                   // console.log(km.centroids, km.clusters);
 
-                    response.success(km.centroids);
+                    response.success(departure_time_centroid);
                 },
                 error: function(error) {
                     response.error('get user detail error');
