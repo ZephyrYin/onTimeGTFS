@@ -9,6 +9,7 @@ Parse.Cloud.define("testQuery", function(request, response){
     var routes = Parse.Object.extend("stop_times");
     var query = new Parse.Query(routes);
     query.equalTo("trip_id", request.params.TRIP_ID);
+    query.forEach()
     query.find({
         success: function(results) {
             response.success(results);
@@ -17,6 +18,30 @@ Parse.Cloud.define("testQuery", function(request, response){
             response.error('some error happens');
         }
     });
+});
+
+Parse.Cloud.define("generateStopGraph", function(request, response){
+    var routes = Parse.Object.extend("stops");
+    var get_records_cnt = 0;
+    var limit_param = 100;
+    var query = new Parse.Query(routes);
+    query.limit(limit_param);
+
+    //for(var i=0;i<2;i++){
+
+        query.skip(200);
+        query.find({
+            success: function(results){
+                get_records_cnt = get_records_cnt + results.length;
+                //console.log(get_records_cnt);
+                response.success(results.length);
+            },
+            error: function(err){
+                response.error('some err happens');
+            }
+        });
+    //}
+    //response.success(get_records_cnt);
 });
  
  
@@ -105,771 +130,6 @@ Parse.Cloud.define("generateUserData1", function(request, response){
     });
 });
 
-Parse.Cloud.define("generateUserData2", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156493" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-Parse.Cloud.define("generateUserData3", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156492" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-Parse.Cloud.define("generateUserData4", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156491" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-Parse.Cloud.define("generateUserData5", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156490" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-Parse.Cloud.define("generateUserData6", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156489" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-Parse.Cloud.define("generateUserData7", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156488" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-Parse.Cloud.define("generateUserData8", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156487" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-Parse.Cloud.define("generateUserData9", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156486" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
-
-
-Parse.Cloud.define("generateUserData10", function(request, response){
-    var userNumber = 9;
-    var UserData = Parse.Object.extend("userDataNew");
- 
- 	//{“METSGO102_156494”， “METSGO102_156493”, "METSGO102_156492", "METSGO102_156491", "METSGO102_156490", "METSGO102_156489", "METSGO102_156488",
- 	//"METSGO102_156487", "METSGO102_156486", "METSGO102_156485", "METSGO102_156484", "METSGO102_156483", "METSGO102_156482", "METSGO102_156481", 
- 	//"METSGO102_156480", "METSGO102_156479", "METSGO102_156478", "METSGO102_156428"}
-    Parse.Cloud.run('testQuery', { TRIP_ID: "METSGO102_156485" }, {
-        success: function(results) {
-            var cnt=0;
-            for(var u=1;u<=userNumber;u++){
-                var userID='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                    return v.toString(16).toUpperCase();
-                });
- 
-                var testData=[];
- 
-                var arrivalTimeArray = [];
-                var departureTimeArray = [];
-                var stopID = []
-                var delayTimeAccumulate = 0;
-                for (var i = 0; i < results.length; i++) {
-                    var object = results[i];
-                    stopID.push(object.get("stop_id"));
-                    var delayArrive = 0;
-                    var delayDeparture = Math.floor((Math.random() * 10));
-                    var probArriveDelay = Math.random();
-                    var probDepartureDelay = Math.random();
-                    if(probArriveDelay <= 0.4){
-                        delayArrive = 0
-                    }
-                    else{
-                        delayArrive = Math.floor((Math.random() * 10));
-                    }
- 
-                    if(probDepartureDelay <= 0.8){
-                        delayDeparture = 0
-                    }
-                    else{
-                        delayDeparture = Math.floor((Math.random() * 10));
-                    }
-                    if(i == 0)
-                        delayArrive = 0;
-                    delayDeparture += delayArrive;
-                    var curArrivalTime = object.get("arrival_time");
-                    var curDepartureTime = object.get("departure_time");
-                    var timeArrivalDate = new Date();
-                    var timeDepartureDate = new Date();
-                    timeArrivalDate.setHours(parseInt(curArrivalTime.substring(0, 2)), parseInt(curArrivalTime.substring(3, 5)) + delayArrive + delayTimeAccumulate, parseInt(curArrivalTime.substring(6, 8)));
-                    timeDepartureDate.setHours(parseInt(curDepartureTime.substring(0, 2)), parseInt(curDepartureTime.substring(3, 5)) + delayDeparture + delayTimeAccumulate, parseInt(curDepartureTime.substring(6, 8)));
-                    arrivalTimeArray.push(timeArrivalDate);
-                    departureTimeArray.push(timeDepartureDate);
-                    delayTimeAccumulate += delayDeparture;
-                }
- 
-                for(var j=0;j<arrivalTimeArray.length;j++){
-                    var userData = new UserData();
-                    var speed = Math.round(Math.random());
- 
-                    userData.set("speed", speed);
-                    userData.set("userID", userID);
-                    userData.set("stopID", stopID[j]);
-                    userData.set("timeArrival", arrivalTimeArray[j]);
-                    userData.set("timeDeparture", departureTimeArray[j]);
-                    testData.push(userData);
-                }
- 
-                Parse.Object.saveAll(testData, {
-                    success: function(userData) {
- 
-                    },
-                    error: function(userData, error) {
- 
-                    }
-                });
-            }
-            response.success(testData.length);
-        },
-        error: function(error) {
-            response.error('some error happens');
-        }
-    });
-});
 
 Parse.Cloud.define("testKmeans", function(request, response) {
     var kMeans = require("cloud/kMeans.js");
@@ -948,6 +208,8 @@ Parse.Cloud.define("getUserDetail", function(request, response){
     });
 });
 
+Parse.Cloud.afterSave("");
+
 function str_to_min(time){             // string to min
     var tmp = time.split(":");
     return parseInt(tmp[0])*60+parseInt(tmp[1]);
@@ -960,6 +222,87 @@ function min_to_date(time){
     date.setMinutes(t%60);
     return date;
 }
+
+Parse.Cloud.define("setUserToTrip", function(request, response){
+    var StopTimes = Parse.Object.extend("stop_times");
+    var query = new Parse.Query(StopTimes);
+
+    query.equalTo("stop_id", request.params.STOP_ID);
+    query.equalTo("trip_id", request.params.TRIP_ID);
+    var time = request.params.DEPARTURE_TIME;
+    var earlier_time = time;
+    earlier_time.setMinutes(time.getMinutes()-20);              // 20 minutes earlier
+
+    query.lessThanOrEqualTo("departure_time", time.toLocaleTimeString());
+    query.greaterThanOrEqualTo("departure_time", earlier_time.toLocaleString());
+    query.find({
+        success: function(results){
+            response.success(time.toLocaleTimeString());
+        },
+        error: function(err){
+            response.error(err);
+        }
+    })
+});
+
+Parse.Cloud.define("writeToStream", function(request, response){
+    var Stream = Parse.Object.extend("stream");
+
+    var query = new Parse.Query(Stream);
+    query.equalTo("trip_id", request.params.TRIP_ID);
+    query.equalTo("userID", request.params.USER_ID);
+
+    query.find({
+        success: function(results) {
+            if(results.length==0){                              // no record
+                var stream = new Stream()
+                stream.set("trip_id", request.params.TRIP_ID);
+                stream.set("userID", request.params.USER_ID);
+                stream.set("count", request.params.COUNT);
+                stream.save(null, {
+                    success : function(stream){
+                        response.success(stream);
+                    },
+                    error : function(err){
+                        response.error(err);
+                    }
+                });
+            }else if(results.length == 1){                                              // update record
+                var tmp_cnt = request.params.COUNT;
+                var new_cnt = results[0].get("count") + tmp_cnt;
+                results[0].set("count", new_cnt);
+                results[0].save(null, {
+                    success : function(stream){
+                        response.success(stream);
+                    },
+                    error : function(err){
+                        response.error(err);
+                    }
+                });
+            }else{
+                response.error("fatal error, shouldn't have two same records");
+            }
+        },
+        error: function(error) {
+            response.error("Error: " + error.code + " " + error.message);
+        }
+    });
+});
+
+//Parse.Cloud.define("cleanStream", function(request, response){      // clean stream table
+//
+//});
+
+Parse.Cloud.define("main", function(request, response){
+    Parse.Cloud.run("setUserToTrip", { TRIP_ID: "METSGO102_156497"}, {
+        success: function(results) {
+            response.success(results);
+        },
+        error: function(error) {
+            response.error(error);
+        }
+    });
+});
 
 Parse.Cloud.define("kmeans", function(request, response){
     Parse.Cloud.run("getTripDetail", { TRIP_ID: "METSGO102_156426" }, {
