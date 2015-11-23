@@ -208,7 +208,16 @@ Parse.Cloud.define("getUserDetail", function(request, response){
     });
 });
 
-Parse.Cloud.afterSave("");
+Parse.Cloud.afterSave("userData", function(request){                      // update stream after save a record in user data
+    Parse.Cloud.run("setUserToTrip", { STOP_ID: request.object.get("stopID"), USER_ID: request.object.get("userID")}, {
+        success: function(results) {
+            response.success(results);
+        },
+        error: function(error) {
+            response.error(error);
+        }
+    });
+});
 
 function str_to_min(time){             // string to min
     var tmp = time.split(":");
@@ -228,24 +237,21 @@ Parse.Cloud.define("setUserToTrip", function(request, response){
     var query = new Parse.Query(StopTimes);
 
     query.equalTo("stop_id", request.params.STOP_ID);
-    query.equalTo("trip_id", request.params.TRIP_ID);
     var time = request.params.DEPARTURE_TIME;
-    var earlier_time = time;
-    earlier_time.setMinutes(time.getMinutes()-20);              // 20 minutes earlier
-
     query.lessThanOrEqualTo("departure_time", time.toLocaleTimeString());
-    query.greaterThanOrEqualTo("departure_time", earlier_time.toLocaleString());
-    query.find({
-        success: function(results){
-            response.success(time.toLocaleTimeString());
-        },
-        error: function(err){
-            response.error(err);
+    time.setMinutes(time.getMinutes()-20);                                      // trips 20 min earlier
+    query.greaterThanOrEqualTo("departure_time", time.toLocaleTimeString());
+
+    query.find().then(function(results){
+        for(var i = 0; i< results.length; i++){
+            console.log(request.params.STOP_ID);
+            Parse.Cloud.run("updateStream", {TRIP_ID: results[i].get("trip_id"), USER_ID: request.params.USER_ID, STOP_ID: request.params.STOP_ID});
         }
-    })
+        response.success(results);
+    });
 });
 
-Parse.Cloud.define("writeToStream", function(request, response){
+Parse.Cloud.define("updateStream", function(request, response){
     var Stream = Parse.Object.extend("stream");
 
     var query = new Parse.Query(Stream);
@@ -258,7 +264,8 @@ Parse.Cloud.define("writeToStream", function(request, response){
                 var stream = new Stream()
                 stream.set("trip_id", request.params.TRIP_ID);
                 stream.set("userID", request.params.USER_ID);
-                stream.set("count", request.params.COUNT);
+                var stops = new Array();
+                stream.set("stops", stops);
                 stream.save(null, {
                     success : function(stream){
                         response.success(stream);
@@ -268,9 +275,20 @@ Parse.Cloud.define("writeToStream", function(request, response){
                     }
                 });
             }else if(results.length == 1){                                              // update record
-                var tmp_cnt = request.params.COUNT;
-                var new_cnt = results[0].get("count") + tmp_cnt;
-                results[0].set("count", new_cnt);
+                var tmp_stops = results[0].get("stops");
+                var current_stop = request.params.STOP_ID.toString();
+
+                var index;
+                do{
+                    index = tmp_stops.indexOf(current_stop);
+                    if(index > -1){                                                     // found duplicate
+                        tmp_stops.splice(index, 1);                                      // delete
+                    }
+                }while(index > -1);
+
+                tmp_stops.push(current_stop);
+
+                results[0].set("stops", tmp_stops);
                 results[0].save(null, {
                     success : function(stream){
                         response.success(stream);
@@ -294,7 +312,11 @@ Parse.Cloud.define("writeToStream", function(request, response){
 //});
 
 Parse.Cloud.define("main", function(request, response){
-    Parse.Cloud.run("setUserToTrip", { TRIP_ID: "METSGO102_156497"}, {
+    var dt = new Date();
+    dt.setHours(23);
+    dt.setMinutes(40);
+    dt.setSeconds(0);
+    Parse.Cloud.run("setUserToTrip", { USER_ID: "Viola", STOP_ID: "28", DEPARTURE_TIME: dt, TRIP_ID: "METSGO102_156497"}, {
         success: function(results) {
             response.success(results);
         },
@@ -302,6 +324,37 @@ Parse.Cloud.define("main", function(request, response){
             response.error(error);
         }
     });
+
+
+    //var Stream = Parse.Object.extend("stream");
+    //var query = new Parse.Query(Stream);
+    //query.equalTo("objectId", "C4zfemb9hi");
+    //query.find({
+    //    success: function(results) {
+    //        for (var i = 0; i < results.length; i++) {
+    //            var object = results[i];
+    //            var stops = object.get("stops");
+    //            stops.push("c");
+    //            response.success(stops);
+    //        }
+    //    },
+    //    error: function(error) {
+    //        response.error(error);
+    //    }
+    //});
+
+    //var Stream = Parse.Object.extend("stream");
+    //var stream = new Stream()
+    //stream.set("trip_id", "456");
+    //stream.set("userID", "jack");
+    //stream.save(null, {
+    //    success : function(stream){
+    //        response.success(stream);
+    //    },
+    //    error : function(err){
+    //        response.error(err);
+    //    }
+    //});
 });
 
 Parse.Cloud.define("kmeans", function(request, response){
