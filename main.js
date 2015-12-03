@@ -213,7 +213,7 @@ Parse.Cloud.define("getUserDetail", function(request, response){
 });
 
 Parse.Cloud.afterSave("userData", function(request){                      // update stream after save a record in user data
-    Parse.Cloud.run("setUserToTrip", { STOP_ID: request.object.get("stopID"), USER_ID: request.object.get("userID")}, {
+    Parse.Cloud.run("setUserToTrip", { STOP_ID: request.object.get("stopID"), USER_ID: request.object.get("userID"), DEPARTURE_TIME: request.object.get("timeDeparture")}, {
         success: function(results) {
             response.success(results);
         },
@@ -273,27 +273,45 @@ Parse.Cloud.define("setUserToTrip", function(request, response){
 
     query.find().then(function(results){
         for(var i = 0; i< results.length; i++){
-            Parse.Cloud.run("updateStream", {TRIP_ID: results[i].get("trip_id"), USER_ID: request.params.USER_ID, STOP_ID: request.params.STOP_ID});
+            Parse.Cloud.run("updateStream", {TRIP_ID: results[i].get("trip_id"), USER_ID: request.params.USER_ID, STOP_ID: request.params.STOP_ID, DEPARTURE_TIME: request.params.DEPARTURE_TIME});
         }
         response.success(results);
     });
 });
 
 Parse.Cloud.define("updateStream", function(request, response){
+    var tripID = request.params.TRIP_ID;
+    var userID = request.params.USER_ID;
+    var stopID = request.params.STOP_ID;
+
     var Stream = Parse.Object.extend("stream");
+    var queryStream = new Parse.Query(Stream);
+    queryStream.equalTo("trip_id", tripID);
+    queryStream.equalTo("userID", userID);
 
-    var query = new Parse.Query(Stream);
-    query.equalTo("trip_id", request.params.TRIP_ID);
-    query.equalTo("userID", request.params.USER_ID);
+    queryStream.find().then(function(streamResults){
+        var StopTimes = Parse.Object.extend("stop_times");
+        var queryStop = new Parse.Query(StopTimes);
+        queryStop.equalTo("trip_id", tripID);
+        queryStop.ascending("createdAt");
 
-    query.find({
-        success: function(results) {
-            if(results.length==0){                              // no record
+        queryStop.find().then(function(stopResults){
+            var standard_stops = [];
+            for (var i = 0; i < stopResults.length; i++) {
+                standard_stops.push(stopResults[i].get("stop_id"))
+            }
+            var sequence = standard_stops.indexOf(stopID.toString()) + 1;
+            console.log(standard_stops);
+            console.log(sequence);
+
+            if(streamResults.length == 0){                                  // no record
                 var stream = new Stream();
                 stream.set("trip_id", request.params.TRIP_ID);
                 stream.set("userID", request.params.USER_ID);
-                var stops = new Array();
-                stream.set("stops", stops);
+                var stopSequence = new Array();
+                stopSequence.push(sequence);
+                stream.set("stopSequence", stopSequence);
+                stream.set("timeDeparture", request.params.DEPARTURE_TIME);
                 stream.save(null, {
                     success : function(stream){
                         response.success(stream);
@@ -302,51 +320,35 @@ Parse.Cloud.define("updateStream", function(request, response){
                         response.error(err);
                     }
                 });
-            }else if(results.length == 1){                                              // update record
-                var tmp_stops = results[0].get("stops");
-                var current_stop = request.params.STOP_ID.toString();
+            }else if(streamResults.length == 1){                            // one record
+                var tmpStopSequences = streamResults[0].get("stopSequence");
+                var lastSequence = tmpStopSequences[tmpStopSequences.length-1];
 
-                var StopTimes = Parse.Object.extend("stop_times");
-                var strop_query = new Parse.Query(StopTimes);
-                strop_query.equalTo("trip_id", results[0].get("trip_id"));
-                strop_query.ascending("createdAt");
+                if(lastSequence <= sequence){                               // the new stop is in later stops
+                    var index;
+                    do{
+                        index = tmpStopSequences.indexOf(sequence);
+                        if(index > -1){                                                     // remove duplicate
+                            tmpStopSequences.splice(index, 1);
+                        }
+                    }while(index > -1);
+                    tmpStopSequences.push(sequence);
 
-                strop_query.find().then(function(stop_times_results){
-                    var standard_stops = [];
-                    for (var i = 0; i < stop_times_results.length; i++) {
-                        standard_stops.push(stop_times_results[i].get("stop_id"))
-                    }
-                    console.log(results[0].get("trip_id"));
-                    console.log(standard_stops);
-                    if(standard_stops.indexOf(current_stop) >= standard_stops.indexOf(tmp_stops[tmp_stops.length-1])){
-                        var index;
-                        do{
-                            index = tmp_stops.indexOf(current_stop);
-                            if(index > -1){                                                     // remove duplicate
-                                tmp_stops.splice(index, 1);
-                            }
-                        }while(index > -1);
-
-                        tmp_stops.push(current_stop);
-
-                        results[0].set("stops", tmp_stops);
-                        results[0].save(null, {
-                            success : function(stream){
-                                response.success(stream);
-                            },
-                            error : function(err){
-                                response.error(err);
-                            }
-                        });
-                    }
-                });
+                    streamResults[0].set("stopSequence", tmpStopSequences);
+                    streamResults[0].set("timeDeparture", request.params.DEPARTURE_TIME)
+                    streamResults[0].save(null, {
+                        success : function(result){
+                            response.success(result);
+                        },
+                        error : function(err){
+                            response.error(err);
+                        }
+                    });
+                }
             }else{
                 response.error("fatal error, shouldn't have two same records");
             }
-        },
-        error: function(error) {
-            response.error("Error: " + error.code + " " + error.message);
-        }
+        });
     });
 });
 
@@ -398,19 +400,130 @@ Parse.Cloud.define("updateCurrentTrip", function(request, response){
     });
 });
 
+Parse.Cloud.define("predict", function(request, response){
+    var Stream = Parse.Object.extend("stream");
+    var queryStream = new Parse.Query(Stream);
+    queryStream.limit(1000);
+    queryStream.find().then(function(streamResults){
+        var latest = {};
+        var userTimes = {};
+        response.success(streamResults.length);
+        for(var i = 0;i<streamResults.length;i++){
+            var stopSequence = streamResults[i].get("stopSequence");
+            if(stopSequence.length<2)
+                continue;
+
+            var time = streamResults[i].get("timeDeparture");
+            var lastSequence = stopSequence[stopSequence.length-1];
+
+            var tripID = streamResults[i].get("trip_id");
+            if(latest[tripID] == undefined || lastSequence > latest[tripID]){           // only use latest stop
+                latest[tripID] = lastSequence;
+                userTimes[tripID] = [];
+                userTimes[tripID].push(time);
+            }
+        }
+
+        for(var trip in userTimes){
+            Parse.Cloud.run("setTripStatus", {TRIP_ID: trip, STOP_SEQUENCE: latest[trip], USER_TIMES: userTimes[trip]},{
+                success:function(results){
+                    console.log(tripID);
+                },
+                error:function(err){
+                    response.error(err);
+                }
+            });
+        }
+        response.success("prediction done");
+    });
+});
+
+Parse.Cloud.define("setTripStatus", function(request, response) {
+    var kMeans = require("cloud/kMeans.js");
+
+    var timeData=request.params.USER_TIMES;
+    var data=[];
+
+    for (var i=0;i<timeData.length;i++) {                   // initialize data for kmeans
+        var row = [];
+        var curDate = timeData[i];
+        var minutes = curDate.getHours() * 60 + curDate.getMinutes();
+        row.push(minutes);
+        data.push(row);
+    }
+
+    var km = new kMeans({
+        K: 10
+    });
+
+    var clusterIndex = 0;                                   // find cluster with largest size
+    var max = 0;
+    for(var i = 0; i < km.clusters.length; i++){
+        if(km.clusters[i].length > max){
+            max = km.clusters[i].length;
+            clusterIndex = i;
+        }
+    }
+
+    var resultDate = new Date();                            // get centroid of largest cluster
+    resultDate.setMinutes(km.centroids[clusterIndex]);
+    resultDate.setSeconds(0);
+
+    var runningTrips = Parse.Object.extend("runningTrips");
+    var query = new Parse.Query(runningTrips);
+    query.equalTo("trip_id", request.params.TRIP_ID);
+    query.find({
+        success: function(results) {
+            if(results.length==0){                              // no record
+                var trip = new runningTrips();
+                trip.set("trip_id", request.params.TRIP_ID);
+                trip.set("last_stop_sequence", request.params.STOP_SEQUENCE);
+                trip.set("real_departure_time", resultDate);
+                trip.save(null, {
+                    success : function(trip){
+                        response.success(trip);
+                    },
+                    error : function(err){
+                        response.error(err);
+                    }
+                });
+            }else if(results.length == 1){                                              // update record
+                results[0].set("trip_id", request.params.TRIP_ID);
+                results[0].set("last_stop_sequence", request.params.STOP_SEQUENCE);
+                results[0].set("real_departure_time", resultDate);
+                results[0].save(null, {
+                    success : function(trip){
+                        response.success(trip);
+                    },
+                    error : function(err){
+                        response.error(err);
+                    }
+                });
+            }else{
+                response.error("fatal error, shouldn't have two same records");
+            }
+        },
+        error: function(error) {
+            response.error("Error: " + error.code + " " + error.message);
+        }
+    });
+    response.success(resultDate);
+
+});
+
 Parse.Cloud.define("main", function(request, response){
-    //var dt = new Date();
-    //dt.setHours(23);
-    //dt.setMinutes(46);
-    //dt.setSeconds(0);
-    //Parse.Cloud.run("setUserToTrip", { USER_ID: "Viola", STOP_ID: "27", DEPARTURE_TIME: dt}, {
-    //    success: function(results) {
-    //        response.success(results);
-    //    },
-    //    error: function(error) {
-    //        response.error(error);
-    //    }
-    //});
+    var dt = new Date();
+    dt.setHours(23);
+    dt.setMinutes(44);
+    dt.setSeconds(0);
+    Parse.Cloud.run("setUserToTrip", { USER_ID: "Viola", STOP_ID: "27", DEPARTURE_TIME: dt}, {
+        success: function(results) {
+            response.success(results);
+        },
+        error: function(error) {
+            response.error(error);
+        }
+    });
 
     //var StopTimes = Parse.Object.extend("stop_times");
     //var query = new Parse.Query(StopTimes);
