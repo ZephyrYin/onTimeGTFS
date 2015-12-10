@@ -19,34 +19,6 @@ Parse.Cloud.define("testQuery", function(request, response){
         }
     });
 });
-
-Parse.Cloud.define("cleanStream", function(){
-    var Stream = Parse.Object.extend("stream");
-    var get_records_cnt = 0;
-    var limit_param = 10;
-
-    var cnt_per_query = 0;
-    while(true){
-        var query = new Parse.Query(Stream);
-        query.limit(limit_param);
-        query.skip(get_records_cnt);
-
-        query.find({
-            success: function(results){
-                cnt_per_query = results.length;
-                get_records_cnt = get_records_cnt + cnt_per_query;
-                console.log(cnt_per_query);
-                if(cnt_per_query < limit_param){
-                    return;
-                }
-            },
-            error: function(err){
-                cnt_per_query = 0;
-                return;
-            }
-        });
-    }
-});
  
  
 Parse.Cloud.define("generateUserData1", function(request, response){
@@ -293,7 +265,7 @@ Parse.Cloud.define("updateStream", function(request, response){
         var StopTimes = Parse.Object.extend("stop_times");
         var queryStop = new Parse.Query(StopTimes);
         queryStop.equalTo("trip_id", tripID);
-        queryStop.ascending("createdAt");
+        queryStop.ascending("arrival_time");
 
         queryStop.find().then(function(stopResults){
             var standard_stops = [];
@@ -301,8 +273,10 @@ Parse.Cloud.define("updateStream", function(request, response){
                 standard_stops.push(stopResults[i].get("stop_id"))
             }
             var sequence = standard_stops.indexOf(stopID.toString()) + 1;
+
             console.log(standard_stops);
             console.log(sequence);
+            console.log(tripID);
 
             if(streamResults.length == 0){                                  // no record
                 var stream = new Stream();
@@ -511,12 +485,52 @@ Parse.Cloud.define("setTripStatus", function(request, response) {
 
 });
 
+Parse.Cloud.define("cleanClass", function(request, response){
+    var destClass = request.params.DEST_CLASS;
+    var skipCnt = request.params.SKIP_CNT;
+    var queryLimit = request.params.QUERY_LIMIT;
+    var delay = request.params.DELAY;
+
+    var DestClass = Parse.Object.extend(destClass);
+
+    var query = new Parse.Query(DestClass);
+    query.limit(queryLimit);
+    query.skip(skipCnt);
+
+    query.find().then(function(results){
+        var cnt = results.length;
+        console.log(cnt);
+        for(var i = 0; i < cnt; i++){
+            var createTime = results[i].get("createdAt");
+            var currentTime = new Date();
+            var diff = currentTime.getTime() - createTime.getTime();
+            if(Math.abs(diff) >= delay*60*60*1000){                     // delete record after two hours
+                results[i].destroy({});
+            }
+        }
+        if(cnt==queryLimit) {                                       // skip visited records
+            Parse.Cloud.run("cleanClass", {DEST_CLASS: destClass, SKIP_CNT: skipCnt + cnt, QUERY_LIMIT: queryLimit, DELAY: delay});
+        }else{                                                          // no records more
+            response.success("done");
+        }
+    });
+});
+
 Parse.Cloud.define("main", function(request, response){
-    var dt = new Date();
-    dt.setHours(23);
-    dt.setMinutes(44);
-    dt.setSeconds(0);
-    Parse.Cloud.run("setUserToTrip", { USER_ID: "Viola", STOP_ID: "27", DEPARTURE_TIME: dt}, {
+    //var dt = new Date();
+    //dt.setHours(19);
+    //dt.setMinutes(48);
+    //dt.setSeconds(0);
+    //Parse.Cloud.run("setUserToTrip", { USER_ID: "Viola", STOP_ID: "13", DEPARTURE_TIME: dt}, {
+    //    success: function(results) {
+    //        response.success(results);
+    //    },
+    //    error: function(error) {
+    //        response.error(error);
+    //    }
+    //});
+
+    Parse.Cloud.run("cleanClass", {DEST_CLASS: "stream", SKIP_CNT: 0, QUERY_LIMIT: 5, DELAY: 2}, {
         success: function(results) {
             response.success(results);
         },
